@@ -1,4 +1,4 @@
-%clear; clc;
+clear; clc;
 
 previousRngState = rng(0,"twister");
 
@@ -34,9 +34,7 @@ env = rlSimulinkEnv( ...
 env.ResetFcn = @localResetFcnCurriculum;
 
 %% Agent
-if exist("agent","var") == 0
-    agent = createDDPGAgent(obsInfo, actInfo, cfg);
-end
+agent = createDDPGAgent(obsInfo, actInfo, cfg);
 
 %% Evaluation setup
 evalCfg = makeWaterTankEvalConfig(cfg);
@@ -60,7 +58,7 @@ end
 
 %% Curriculum loop
 %for k = 1:numel(cfg.Stages)
- for k = startStage:numel(cfg.Stages)
+ for k = 1:1
 
     stage = cfg.Stages(k);
 
@@ -84,7 +82,6 @@ end
 
     if cfg.UseParallel
         trainOpts.ParallelizationOptions.Mode = "async";
-        %trainOpts.ParallelizationOptions.Mode = "sync";
         trainOpts.ParallelizationOptions.DataToSendFromWorkers = "experiences";
         trainOpts.ParallelizationOptions.StepsUntilDataIsSent = 32;
     end
@@ -94,40 +91,28 @@ end
     % It returns one gated scalar score to train(), but also logs the full
     % metric table in the evaluator data.
 
-    if cfg.useCustomEvaluatorDuringTraining
+    if useCustomEvaluatorDuringTraining
         evl = rlCustomEvaluator( ...
             @(agentIn, envIn, trainInfo) waterTankTrainingEvaluator( ...
             agentIn, envIn, trainInfo, evalCfg, stage, k), ...
             EvaluationFrequency=stage.EvaluationFrequency);
-        % evl = rlCustomEvaluator( ...
-            % @dummyTrainingEvaluator, ...
-            % EvaluationFrequency=stage.EvaluationFrequency);
+        rng(stage.Seed,"twister");
         trainingStats = train(agent, env, trainOpts, Evaluator=evl);
-
-    elseif cfg.useStandardEvaluatorDuringTraining
-        evl = rlEvaluator( ...
-            EvaluationFrequency=stage.EvaluationFrequency, ...
-            NumEpisodes=stage.EvaluationEpisodes);
-        trainingStats = train(agent, env, trainOpts, Evaluator=evl);
-
-    else
+    else useMATLABEvaluator
         trainingStats = train(agent, env, trainOpts);
     end
-    rng(stage.Seed,"twister");
     
     %% Post-stage full evaluation
-    if cfg.usePostStageEvaluation
-        fprintf("\nRunning post-stage evaluation for Stage %d: %s\n", k, stage.Name);
+    fprintf("\nRunning post-stage evaluation for Stage %d: %s\n", k, stage.Name);
 
-        postStageEval = evaluateWaterTankController( ...
-            agent, env, evalCfg.FinalCases, evalCfg, ...
-            "ControllerName", "DDPG", ...
-            "EvalSetName", "post_stage_full", ...
-            "StageIndex", k, ...
-            "StageName", stage.Name);
+    postStageEval = evaluateWaterTankController( ...
+        agent, env, evalCfg.FinalCases, evalCfg, ...
+        "ControllerName", "DDPG", ...
+        "EvalSetName", "post_stage_full", ...
+        "StageIndex", k, ...
+        "StageName", stage.Name);
 
-        evalLog.postStage = [evalLog.postStage; postStageEval.summary];
-    end
+    evalLog.postStage = [evalLog.postStage; postStageEval.summary];
 
     %% Save stage result
     saveName = sprintf("%s_stage_%02d_%s.mat", ...

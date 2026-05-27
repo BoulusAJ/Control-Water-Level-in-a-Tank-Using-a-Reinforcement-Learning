@@ -48,10 +48,18 @@ actor = rlContinuousDeterministicActor( ...
     ObservationInputNames="obsInLyr");
 
 %% Agent
+%% Agent
 agent = rlDDPGAgent(actor, critic);
 
 agent.AgentOptions.SampleTime = cfg.Ts;
-agent.AgentOptions.DiscountFactor = 0.99;
+
+% Match the agent discount factor to the gamma used in potential-based shaping.
+if isfield(cfg.Stages(1).Reward, "gamma")
+    agent.AgentOptions.DiscountFactor = cfg.Stages(1).Reward.gamma;
+else
+    agent.AgentOptions.DiscountFactor = 0.99;
+end
+
 agent.AgentOptions.MiniBatchSize = 256;
 agent.AgentOptions.ExperienceBufferLength = 1e5;
 

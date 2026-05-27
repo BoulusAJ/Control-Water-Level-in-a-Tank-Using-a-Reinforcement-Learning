@@ -5,6 +5,24 @@ p = evalin("base","curriculumParams");
 blkRef = sprintf("rlwatertank/Desired \nWater Level");
 blkH   = "rlwatertank/Water-Tank System/H";
 
+%% Fixed reset mode for evaluation
+% Used by the custom evaluator to run deterministic test cases.
+% Example:
+%   curriculumParams.mode = "fixed";
+%   curriculumParams.h0 = 5;
+%   curriculumParams.hRef = 9;
+if isfield(p,"mode") && string(p.mode) == "fixed"
+
+    hRef = p.hRef;
+    h0   = p.h0;
+
+    in = setBlockParameter(in, blkRef, Value=num2str(hRef));
+    in = setBlockParameter(in, blkH, InitialCondition=num2str(h0));
+
+    return;
+
+end
+
 %% Reference
 hRef = p.hRefStd*randn + p.hRefMean;
 

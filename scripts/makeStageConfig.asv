@@ -12,21 +12,16 @@ cfg.Tf = 10;
 
 %cfg.UseParallel = false;
 cfg.UseParallel = true;
-cfg.RequestedWorkers = 20;
+cfg.RequestedWorkers = 16;
 
 cfg.Verbose = true;
-%cfg.PlotMode = "training-progress";
-cfg.PlotMode = "none";
+cfg.PlotMode = "training-progress";
 
 cfg.SavePrefix = "WaterTankDDPG_curriculum";
 cfg.FinalSaveName = "WaterTankDDPG_curriculum_final.mat";
 
 cfg.SaveReplayBuffer = false;
 cfg.SaveTrainingStats = true;
-
-cfg.useCustomEvaluatorDuringTraining = false;
-cfg.useStandardEvaluatorDuringTraining = false;
-cfg.usePostStageEvaluation = true;
 
 %% =========================================================
 % SHARED REWARD DEFAULTS
@@ -89,8 +84,8 @@ baseReward.w_e = 1.0;                 % weight on normalized squared tracking er
 % Integral-error penalty
 % This is the PI-like part of the reward. It penalizes persistent error and
 % directly targets low steady-state error.
-baseReward.w_I = 0.2;                % weight on normalized squared integral error
-baseReward.I_scale = 3.0;             % scale for integral error normalization
+baseReward.w_I = 0.05;                % weight on normalized squared integral error
+baseReward.I_scale = 5.0;             % scale for integral error normalization
 
 % Optional exponential tracking reward
 % Disabled initially. The default tracking term is quadratic.
@@ -152,8 +147,7 @@ stages(1).Reset.minInitialError = 0.5;
 stages(1).Reset.maxInitialError = 2.0;
 
 stages(1).Reward = baseReward;
-stages(1).Reward.shapingWeight = 0.3;
-stages(1).Reward.lambda_du  = 0.005;
+stages(1).Reward.shapingWeight = 1.0;
 
 stages(1).NoiseStd = 0.05;
 stages(1).NoiseDecay = 1e-5;
@@ -178,7 +172,7 @@ stages(2).StopTrainingValue = stages(2).MaxEpisodes;
 stages(2).Reset.maxInitialError = 5.0;
 
 stages(2).Reward = baseReward;
-stages(2).Reward.shapingWeight = 0.15;
+stages(2).Reward.shapingWeight = 0.5;
 
 stages(2).NoiseStd = 0.08;
 stages(2).NoiseDecay = 1e-5;
@@ -195,18 +189,15 @@ stages(2).ResetBuffer = true;
 stages(3) = stages(1);
 stages(3).Name = "full_reset_weak_shaping";
 stages(3).Seed = 3;
-stages(3).MaxEpisodes = 500;
+stages(3).MaxEpisodes = 1500;
 stages(3).StopTrainingValue = stages(3).MaxEpisodes;
 
-stages(3).Reset.mode = "offset";
-
-stages(2).Reset.maxInitialError = 8.0;
-
+stages(3).Reset.mode = "independent";
 
 stages(3).Reward = baseReward;
-stages(3).Reward.shapingWeight = 0.05;
+stages(3).Reward.shapingWeight = 0.2;
 
-stages(3).NoiseStd = 0.05;
+stages(3).NoiseStd = 0.12;
 stages(3).NoiseDecay = 1e-5;
 stages(3).ResetBuffer = true;
 
@@ -237,7 +228,7 @@ stages(4).Reward.shapingWeight = 0.0;
 % behavior. If this hurts steady-state accuracy, reduce it back to 0.02.
 stages(4).Reward.lambda_du = 0.05;
 
-stages(4).NoiseStd = 0.01;
+stages(4).NoiseStd = 0.02;
 stages(4).NoiseDecay = 1e-5;
 stages(4).ResetBuffer = true;
 
